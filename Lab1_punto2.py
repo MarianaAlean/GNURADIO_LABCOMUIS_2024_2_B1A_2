@@ -82,7 +82,7 @@ class Lab1_punto2(gr.top_block, Qt.QWidget):
         ##################################################
         # Blocks
         ##################################################
-        self._samp_rate_range = Range(2000, 40000, 1000, 2000, 200)
+        self._samp_rate_range = Range(0, 40000, 1000, 2000, 200)
         self._samp_rate_win = RangeWidget(self._samp_rate_range, self.set_samp_rate, "'samp_rate'", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._samp_rate_win)
         self.qtgui_time_sink_x_0 = qtgui.time_sink_f(
@@ -177,7 +177,7 @@ class Lab1_punto2(gr.top_block, Qt.QWidget):
         self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.qwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
         self.blocks_throttle_0 = blocks.throttle(gr.sizeof_float*1, samp_rate,True)
-        self.analog_sig_source_x_0 = analog.sig_source_f(samp_rate, analog.GR_SIN_WAVE, 2000, 1, 0, 0)
+        self.analog_sig_source_x_0 = analog.sig_source_f(samp_rate, analog.GR_TRI_WAVE, 4000, 1, 0, 0)
 
 
         ##################################################
