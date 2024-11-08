@@ -11,8 +11,8 @@
 from PyQt5 import Qt
 from gnuradio import qtgui
 from PyQt5 import QtCore
-from gnuradio import analog
 from gnuradio import blocks
+import numpy
 from gnuradio import gr
 from gnuradio.filter import firdes
 from gnuradio.fft import window
@@ -24,6 +24,7 @@ from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from gnuradio import uhd
 import time
+import math
 import sip
 import threading
 
@@ -66,11 +67,12 @@ class lab3_2(gr.top_block, Qt.QWidget):
         # Variables
         ##################################################
         self.samp_rate = samp_rate = 1.5625E6
+        self.n = n = 2
         self.ka = ka = 1
         self.fm = fm = 1E3
         self.fc = fc = 50E6
         self.GTX = GTX = 0
-        self.B = B = 1
+        self.B = B = 10
         self.Am = Am = 1
         self.Ac = Ac = 125E-3
 
@@ -78,21 +80,18 @@ class lab3_2(gr.top_block, Qt.QWidget):
         # Blocks
         ##################################################
 
-        self._ka_range = qtgui.Range(0, 2, 0.1, 1, 200)
+        self._ka_range = qtgui.Range(0, 10, 0.1, 1, 200)
         self._ka_win = qtgui.RangeWidget(self._ka_range, self.set_ka, "habilita portadora (Ka)", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._ka_win)
-        self._fm_range = qtgui.Range(300, samp_rate/4, 100, 1E3, 200)
-        self._fm_win = qtgui.RangeWidget(self._fm_range, self.set_fm, "frecuencia del mensaje", "counter_slider", float, QtCore.Qt.Horizontal)
-        self.top_layout.addWidget(self._fm_win)
         self._fc_range = qtgui.Range(50E6, 2.2E9, 1E6, 50E6, 200)
         self._fc_win = qtgui.RangeWidget(self._fc_range, self.set_fc, "frecuencia de la portadora", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._fc_win)
         self._GTX_range = qtgui.Range(0, 30, 1, 0, 200)
         self._GTX_win = qtgui.RangeWidget(self._GTX_range, self.set_GTX, "ganancia del tranmisor", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._GTX_win)
-        self._Am_range = qtgui.Range(0, 4, 100E-3, 1, 200)
-        self._Am_win = qtgui.RangeWidget(self._Am_range, self.set_Am, "Amplitud del mensaje", "counter_slider", float, QtCore.Qt.Horizontal)
-        self.top_layout.addWidget(self._Am_win)
+        self._B_range = qtgui.Range(1, 20, 1, 10, 200)
+        self._B_win = qtgui.RangeWidget(self._B_range, self.set_B, "# muestras por simbolo", "counter_slider", int, QtCore.Qt.Horizontal)
+        self.top_layout.addWidget(self._B_win)
         self._Ac_range = qtgui.Range(0, 1, 1E-3, 125E-3, 200)
         self._Ac_win = qtgui.RangeWidget(self._Ac_range, self.set_Ac, "amplitud de l aportadora", "counter_slider", float, QtCore.Qt.Horizontal)
         self.top_layout.addWidget(self._Ac_win)
@@ -204,28 +203,39 @@ class lab3_2(gr.top_block, Qt.QWidget):
 
         self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.qwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
+        self._fm_range = qtgui.Range(300, samp_rate/4, 100, 1E3, 200)
+        self._fm_win = qtgui.RangeWidget(self._fm_range, self.set_fm, "frecuencia del mensaje", "counter_slider", float, QtCore.Qt.Horizontal)
+        self.top_layout.addWidget(self._fm_win)
+        self.blocks_uchar_to_float_0 = blocks.uchar_to_float()
+        self.blocks_repeat_0 = blocks.repeat(gr.sizeof_float*1, B)
         self.blocks_null_source_0 = blocks.null_source(gr.sizeof_float*1)
         self.blocks_multiply_const_vxx_1 = blocks.multiply_const_cc(Ac)
+        self.blocks_multiply_const_vxx_0_0 = blocks.multiply_const_ff((1/math.pow(2,n)))
         self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff(ka)
         self.blocks_float_to_complex_0 = blocks.float_to_complex(1)
+        self.blocks_add_const_vxx_0_0 = blocks.add_const_ff((-(math.pow(2,n)-1)/2))
         self.blocks_add_const_vxx_0 = blocks.add_const_ff(1)
-        self.analog_sig_source_x_0 = analog.sig_source_f(samp_rate, analog.GR_COS_WAVE, fm, Am, 0, 0)
-        self._B_range = qtgui.Range(-1, 1, 2, 1, 200)
-        self._B_win = qtgui.RangeWidget(self._B_range, self.set_B, "cambio de banda", "counter_slider", float, QtCore.Qt.Horizontal)
-        self.top_layout.addWidget(self._B_win)
+        self.analog_random_source_x_0 = blocks.vector_source_b(list(map(int, numpy.random.randint(0, int(math.pow(2,n)), 1000))), True)
+        self._Am_range = qtgui.Range(0, 4, 100E-3, 1, 200)
+        self._Am_win = qtgui.RangeWidget(self._Am_range, self.set_Am, "Amplitud del mensaje", "counter_slider", float, QtCore.Qt.Horizontal)
+        self.top_layout.addWidget(self._Am_win)
 
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.analog_sig_source_x_0, 0), (self.blocks_multiply_const_vxx_0, 0))
+        self.connect((self.analog_random_source_x_0, 0), (self.blocks_uchar_to_float_0, 0))
         self.connect((self.blocks_add_const_vxx_0, 0), (self.blocks_float_to_complex_0, 0))
+        self.connect((self.blocks_add_const_vxx_0_0, 0), (self.blocks_multiply_const_vxx_0_0, 0))
         self.connect((self.blocks_float_to_complex_0, 0), (self.blocks_multiply_const_vxx_1, 0))
         self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_add_const_vxx_0, 0))
+        self.connect((self.blocks_multiply_const_vxx_0_0, 0), (self.blocks_multiply_const_vxx_0, 0))
         self.connect((self.blocks_multiply_const_vxx_1, 0), (self.qtgui_freq_sink_x_0, 0))
         self.connect((self.blocks_multiply_const_vxx_1, 0), (self.qtgui_time_sink_x_0, 0))
         self.connect((self.blocks_multiply_const_vxx_1, 0), (self.uhd_usrp_sink_0, 0))
         self.connect((self.blocks_null_source_0, 0), (self.blocks_float_to_complex_0, 1))
+        self.connect((self.blocks_repeat_0, 0), (self.blocks_add_const_vxx_0_0, 0))
+        self.connect((self.blocks_uchar_to_float_0, 0), (self.blocks_repeat_0, 0))
 
 
     def closeEvent(self, event):
@@ -241,10 +251,17 @@ class lab3_2(gr.top_block, Qt.QWidget):
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
-        self.analog_sig_source_x_0.set_sampling_freq(self.samp_rate)
         self.qtgui_freq_sink_x_0.set_frequency_range(0, self.samp_rate)
         self.qtgui_time_sink_x_0.set_samp_rate(self.samp_rate)
         self.uhd_usrp_sink_0.set_samp_rate(self.samp_rate)
+
+    def get_n(self):
+        return self.n
+
+    def set_n(self, n):
+        self.n = n
+        self.blocks_add_const_vxx_0_0.set_k((-(math.pow(2,self.n)-1)/2))
+        self.blocks_multiply_const_vxx_0_0.set_k((1/math.pow(2,self.n)))
 
     def get_ka(self):
         return self.ka
@@ -258,7 +275,6 @@ class lab3_2(gr.top_block, Qt.QWidget):
 
     def set_fm(self, fm):
         self.fm = fm
-        self.analog_sig_source_x_0.set_frequency(self.fm)
 
     def get_fc(self):
         return self.fc
@@ -279,13 +295,13 @@ class lab3_2(gr.top_block, Qt.QWidget):
 
     def set_B(self, B):
         self.B = B
+        self.blocks_repeat_0.set_interpolation(self.B)
 
     def get_Am(self):
         return self.Am
 
     def set_Am(self, Am):
         self.Am = Am
-        self.analog_sig_source_x_0.set_amplitude(self.Am)
 
     def get_Ac(self):
         return self.Ac
